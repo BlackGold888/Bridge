@@ -13,7 +13,7 @@ contract MyERC20 is ERC20, ERC20Burnable, Ownable {
     }
 
     function burn(address from, uint256 amount) public {
-    _burn(from, amount);
+        _burn(from, amount);
     }
 
 }

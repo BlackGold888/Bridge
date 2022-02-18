@@ -41,35 +41,25 @@ describe("Bridge", function () {
 
   it.only("Redeem", async function () {
     console.log(owner.address);
-    // await tokenERC20Instance.mint(addr1.address, ethers.utils.parseEther('100'));
-    // const contractTx: ContractTransaction = await bridgeInstance.connect(addr1).swap(addr1.address, ethers.utils.parseEther('100'), 'hello', 1);
-    // const contractReceipt: ContractReceipt = await contractTx.wait();
-    // const event = contractReceipt.events?.find(event => event.event === 'SwapInitialized');
+    await tokenERC20Instance.mint(addr2.address, ethers.utils.parseEther('100'));
+    const contractTx: ContractTransaction = await bridgeInstance.connect(addr1).swap(addr1.address, addr2.address, ethers.utils.parseEther('100').toString(), 1);
+    const contractReceipt: ContractReceipt = await contractTx.wait();
+    const event = contractReceipt.events?.find(event => event.event === 'SwapInitialized');
     
 
     const message:string = web3.utils.keccak256(web3.eth.abi.encodeParameters(
       ['address', 'address', 'uint256', 'uint256'],
       [addr1.address, addr2.address, ethers.utils.parseEther('100').toString(), 1]
     ));
-    
-    const signature = await web3.eth.sign(message, addr1.address);
+
+    const data = await addr1.signMessage(message)
+
+    const signature = await ethers.utils.splitSignature(data);
 
     console.log(signature);
-    
-  //   const buyerHash = web3.utils.soliditySha3(
-  //     user1.address,
-  //     nft.address,
-  //     0,
-  //     oneEther,
-  // );
-  // const buyerSignature = await user1.signMessage(ethers.utils.arrayify(buyerHash));
 
-
-  //  const temp = ethers.utils.solidityKeccak256(["string", "string", "string", "uint8"], [addr1.address, addr2.address, ethers.utils.parseEther('100'), 1]);
-   
-    // console.log(temp);
-    //const signature = new ethers.utils.SigningKey(temp);
-    console.log(await bridgeInstance.connect(addr1).redeem(addr1.address, addr2.address, ethers.utils.parseEther('100'), 1, signature));
+    const redeem = await bridgeInstance.connect(addr1).redeem(addr1.address, addr2.address, ethers.utils.parseEther('100'), 1, data);
+    console.log(redeem);
     
   });
 });
