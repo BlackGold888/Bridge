@@ -9,11 +9,13 @@ contract Bridge is Ownable{
     uint256 public networkChainId;
 
     event SwapInitialized(
-        address _to,
-        address _from,
+        address to,
         uint256 amount,
-        uint256 nonce
+        uint256 nonce,
+        uint256 networkChainId
     );
+
+    mapping(bytes32 => bool) public users; 
     
     constructor(address _tokenAddress, uint256 _networkChainId) {
         tokenAddress = _tokenAddress;
@@ -24,50 +26,21 @@ contract Bridge is Ownable{
         tokenAddress = newTokenAddress;
     }
 
-    function swap(address _to, address _from, uint256 _amount, uint256 _nonce) external virtual {
-        MyERC20(tokenAddress).burn(_from, _amount);
-        emit SwapInitialized(_to, _from, _amount, _nonce);
+    function swap(uint256 _amount, uint256 _nonce, uint256 _networkChainId) external virtual {
+        MyERC20(tokenAddress).burn(msg.sender, _amount);
+        emit SwapInitialized(msg.sender, _amount, _nonce, _networkChainId);
     }
 
     
 
-    function redeem(address _to, address _from, uint256 _amount, uint256 _nonce, bytes memory _signature) external virtual returns(address){
+    function redeem(uint256 _amount, uint256 _nonce, uint256 _networkChainId, bytes32 r, bytes32 s, uint8 v) external virtual returns(address){
             bytes32 messageHash = keccak256(
-               abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(_to, _from,_amount, _nonce)))
+               abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(msg.sender,_amount, _nonce, _networkChainId)))
             );
-            (bytes32 r, bytes32 s, uint8 v) = splitSignature(_signature);
+            require(users[messageHash] == false, "You already mint");
+
+            users[messageHash] = true;
+            MyERC20(tokenAddress).mint(msg.sender, _amount);
             return ecrecover(messageHash, v, r, s);
-    }
-
-    function splitSignature(bytes memory sig)
-        public
-        pure
-        returns (
-            bytes32 r,
-            bytes32 s,
-            uint8 v
-        )
-    {
-        require(sig.length == 65, "invalid signature length");
-
-        assembly {
-            /*
-            First 32 bytes stores the length of the signature
-
-            add(sig, 32) = pointer of sig + 32
-            effectively, skips first 32 bytes of signature
-
-            mload(p) loads next 32 bytes starting at the memory address p into memory
-            */
-
-            // first 32 bytes, after the length prefix
-            r := mload(add(sig, 32))
-            // second 32 bytes
-            s := mload(add(sig, 64))
-            // final byte (first byte of the next 32 bytes)
-            v := byte(0, mload(add(sig, 96)))
-        }
-
-        // implicitly return (r, s, v)
     }
 }
